@@ -1,0 +1,25 @@
+.list {
+    margin-top: 1rem;
+    font-weight: bold;
+    list-style: none;
+}
+.title {
+    background-color: #00cec9;
+    font-weight: 600;
+    font-size: xx-large;
+}
+.title2 {
+    font-weight: 600;
+    font-size: xx-large;
+}
+.innertitles {
+    font-size: x-large; 
+    font-weight: 400;
+
+}
+
+#map{
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    }
