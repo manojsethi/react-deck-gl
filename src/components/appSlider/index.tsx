@@ -20,13 +20,14 @@ const AppSlider = () => {
     lat: 76.8188,
     lng: 30.7421,
   });
-  const [buildingArea, setBuildingArea] = useState(0);
+  const [buildingArea, setBuildingArea] = useState<number>(0);
+  const [buildingHeight, setBuildingHeight] = useState<number>(0);
   const [coverage, setCoverage] = useState<number | number[]>(100);
   const [landArea, setLandArea] = useState<number>(0);
   const [geoJSON, setGeoJSON] = useState<any>({});
   const [originalGeoJSON, setOriginalGeoJSON] = useState<any>({});
   const [buildingFloorArea, setbuildingFloorArea] = useState<number>(0);
-  const [volume, setVolume] = useState(0);
+  const [volume, setVolume] = useState<number>(0);
   const [layers, setLayers] = useState<any[]>([]);
   const [initialLayer, setInitialLayer] = useState<any>();
   const handleSlideFloorNumber = () => {
@@ -67,6 +68,10 @@ const AppSlider = () => {
       }
     }
     setVolume((floorHeight as number) * buildingFloorArea);
+    setBuildingHeight(
+      (floorNumber > 0 ? floorNumber - 1 : floorNumber) *
+        (floorHeight as number)
+    );
     setBuildingArea(floorNumber * buildingFloorArea);
     setLayers(floorLayers);
   };
@@ -97,6 +102,7 @@ const AppSlider = () => {
     const polygonArea = turf.area(polygon);
     console.log(polygonArea, "area");
     setbuildingFloorArea(polygonArea);
+
     setGeoJSON({ ...geoJSON, coordinates: [[newbuildingGeoJSON]] });
   };
 
@@ -174,7 +180,7 @@ const AppSlider = () => {
               value={floorHeight}
               aria-label="Small"
               min={0}
-              max={100}
+              max={5}
               valueLabelDisplay="off"
               onChange={(event, value) => setFloorHeight(value)}
               marks={marks}
@@ -223,7 +229,7 @@ const AppSlider = () => {
             (m2)
           </li>
           <li className="list"> Volume {`${volume}`}(m3)</li>
-          <li className="list"> Building Height {`${floorHeight}`}(m)</li>
+          <li className="list"> Building Height {`${buildingHeight}`}(m)</li>
         </ul>
       </Grid>
     </Grid>
