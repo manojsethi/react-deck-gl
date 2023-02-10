@@ -2,35 +2,59 @@ import Grid from "@mui/material/Grid";
 import Slider from "@mui/material/Slider";
 import "../../assets/appslider.css";
 import { marks } from "./appSliderData";
+import * as turf from "@turf/turf";
 import MapComp from "../map";
 import { useEffect, useState } from "react";
 import { PolygonLayer, SolidPolygonLayer } from "@deck.gl/layers/typed";
 import { Button } from "@mui/material";
+import { findNewBuildingArea } from "../../utils/vencityFormula";
+import { v4 as uuid } from "uuid";
+export interface ILatLng {
+  lat: number;
+  lng: number;
+}
 const AppSlider = () => {
   const [floorHeight, setFloorHeight] = useState<number | number[]>(0);
   const [floorNumber, setFloorNumber] = useState<number>(1);
+  const [currentLatlng, setCurrentLatlng] = useState<ILatLng>({
+    lat: 76.8188,
+    lng: 30.7421,
+  });
+  const [buildingArea, setBuildingArea] = useState(0);
+  const [coverage, setCoverage] = useState<number | number[]>(100);
+  const [landArea, setLandArea] = useState<number>(0);
   const [geoJSON, setGeoJSON] = useState<any>({});
+  const [originalGeoJSON, setOriginalGeoJSON] = useState<any>({});
+  const [buildingFloorArea, setbuildingFloorArea] = useState<number>(0);
+  const [volume, setVolume] = useState(0);
   const [layers, setLayers] = useState<any[]>([]);
-  const handleSlideFloorNumber = (mapData: any) => {
+  const [initialLayer, setInitialLayer] = useState<any>();
+  const handleSlideFloorNumber = () => {
+    const firstTimeDataLoad = {
+      type: "MultiData",
+      coordinates: [[geoJSON?.coordinates?.[0]?.[0]]],
+    };
     let slide = floorNumber;
     let newLayers = layers;
-    let i = 0;
+    let i = 1;
     let floorLayers: any[] = [];
+    floorLayers.push(initialLayer);
     for (i; i < slide; i++) {
       if (newLayers.length > 0) {
         let solidLayer = new SolidPolygonLayer({
-          id: "arcss",
-          data: [mapData],
+          id: uuid() + Date.now().toString(),
+          data: [firstTimeDataLoad],
           filled: true,
           stroked: true,
           extruded: true,
           wireframe: true,
           visible: true,
-          getPolygon: (f) => f.coordinates[0],
+          getPolygon: (f) => f?.coordinates?.[0],
           autoHighlight: true,
           getElevation: (f) => floorHeight as number,
           lineWidthMinPixels: 20,
           getLineColor: [0, 0, 0],
+          // lineWidthUnit : ,
           elevationScale: i * (floorHeight as number),
           positionFormat: "XY",
           lineJointRounded: true,
@@ -39,37 +63,59 @@ const AppSlider = () => {
           getFillColor: (d) => [218, 165, 32],
         });
         floorLayers.push(solidLayer);
-      } else {
-        floorLayers.push(
-          new PolygonLayer({
-            id: "polygon-layer",
-            data: [mapData],
-            pickable: true,
-            stroked: true,
-            filled: true,
-            wireframe: true,
-            coordinateOrigin: [44, 44, 55],
-            lineWidthMinPixels: 1,
-            getPolygon: (d) => d.coordinates[0],
-            getFillColor: (d) => [99, 44, 156],
-            getLineColor: [255, 255, 255],
-            lineJointRounded: true,
-            lineWidthScale: 2,
-            getLineWidth: 1,
-          })
-        );
+        setLayers(floorLayers);
       }
     }
+    setVolume((floorHeight as number) * buildingFloorArea);
+    setBuildingArea(floorNumber * buildingFloorArea);
     setLayers(floorLayers);
   };
+  const loadFirstTimePolygon = (json: any) => {
+    let layer = new PolygonLayer({
+      id: "polygon-layer",
+      data: [json],
+      pickable: true,
+      stroked: true,
+      filled: true,
+      wireframe: true,
+      coordinateOrigin: [44, 44, 55],
+      lineWidthMinPixels: 1,
+      getPolygon: (d) => d?.coordinates?.[0],
+      getFillColor: (d) => [127, 255, 212],
+      getLineColor: [0, 0, 0, 80],
+      lineJointRounded: true,
+      lineWidthScale: 1,
+      getLineWidth: 1,
+    });
+    setInitialLayer(layer);
+    setLayers([layer]);
+  };
+  const hanldeIncreaseCoverage = (e: any, v: any) => {
+    setCoverage(v);
+    let newbuildingGeoJSON = findNewBuildingArea(originalGeoJSON, v);
+    var polygon = turf.polygon([newbuildingGeoJSON!]);
+    const polygonArea = turf.area(polygon);
+    console.log(polygonArea, "area");
+    setbuildingFloorArea(polygonArea);
+    setGeoJSON({ ...geoJSON, coordinates: [[newbuildingGeoJSON]] });
+  };
+
   useEffect(() => {
-    handleSlideFloorNumber(geoJSON);
-  }, [floorHeight, floorNumber, geoJSON]);
+    navigator.geolocation.getCurrentPosition(function (position) {
+      setCurrentLatlng({
+        lat: position.coords.longitude,
+        lng: position.coords.latitude,
+      });
+    });
+  }, []);
+  useEffect(() => {
+    handleSlideFloorNumber();
+  }, [floorNumber, floorHeight, coverage]);
   return (
     <Grid container spacing={3}>
       <Grid item md={24} sm={8} lg={4} xl={3} xs={12}>
         <div style={{ padding: "1rem" }}>
-          <Button variant="contained" component="label">
+          <Button variant="contained" component="label" fullWidth>
             LOAD JSON
             <input
               type="file"
@@ -86,13 +132,40 @@ const AppSlider = () => {
                     fileReader.onload = (e) => {
                       const target = e.target;
                       const result = target?.result;
-                      setGeoJSON(JSON.parse(result as any));
+                      let parsedJson = JSON.parse(result as any);
+                      const coords = parsedJson.coordinates[0]?.[0];
+                      console.log(coords, "coords");
+                      setCurrentLatlng({
+                        lat: coords?.[0]?.[0],
+                        lng: coords?.[1]?.[1],
+                      });
+                      loadFirstTimePolygon(parsedJson);
+                      setGeoJSON(parsedJson);
+                      setOriginalGeoJSON(parsedJson);
+                      const coordinates = parsedJson?.coordinates[0];
+                      var polygon = turf.polygon([coordinates[0]]);
+                      const landCoverage = turf.area(polygon);
+                      setLandArea(landCoverage);
                     };
                   }
                 }
               }}
             />
           </Button>
+          <div style={{ marginTop: 30 }}>
+            <label>Lot Coverage &nbsp; &nbsp; {coverage}</label>
+            <Slider
+              size="medium"
+              defaultValue={coverage}
+              value={coverage}
+              aria-label="Small"
+              min={1}
+              max={100}
+              valueLabelDisplay="off"
+              onChange={(event, value) => hanldeIncreaseCoverage(event, value)}
+              marks={marks}
+            />
+          </div>
           <div style={{ marginTop: 30 }}>
             <label>Floor height &nbsp; &nbsp; {floorHeight}</label>
             <Slider
@@ -109,7 +182,7 @@ const AppSlider = () => {
           </div>
           <div style={{ marginTop: 30 }}>
             <label>
-              Floor number &nbsp; &nbsp;{" "}
+              Floor number &nbsp; &nbsp;
               {floorNumber > 0 ? floorNumber - 1 : floorNumber}
             </label>
             <Slider
@@ -126,11 +199,15 @@ const AppSlider = () => {
           </div>
         </div>
       </Grid>
-      {!geoJSON ? (
-        <></>
+      {!currentLatlng?.lat ? (
+        <>Loading...</>
       ) : (
         <Grid item md={24} sm={6} lg={8} xl={7} xs={12}>
-          <MapComp floorHeight={floorHeight} layers={layers} />
+          <MapComp
+            floorHeight={floorHeight}
+            layers={layers}
+            latLng={currentLatlng}
+          />
         </Grid>
       )}
       <Grid item md={24} sm={12} lg={6} xl={2} xs={12}>
@@ -138,10 +215,14 @@ const AppSlider = () => {
           Statistiques
         </p>
         <ul>
-          <li className="list"> Land Area (m2)</li>
-          <li className="list"> Building Area (m2)</li>
-          <li className="list"> Building Floor Area (m2)</li>
-          <li className="list"> Volume(m3)</li>
+          <li className="list">Land Area {`${landArea}`}(m2)</li>
+          <li className="list"> Building Area {`${buildingArea}`}(m2)</li>
+          <li className="list">
+            {" "}
+            Building Floor Area {`${buildingFloorArea && buildingFloorArea}`}
+            (m2)
+          </li>
+          <li className="list"> Volume {`${volume}`}(m3)</li>
           <li className="list"> Building Height {`${floorHeight}`}(m)</li>
         </ul>
       </Grid>
