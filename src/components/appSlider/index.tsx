@@ -15,7 +15,7 @@ export interface ILatLng {
 }
 const AppSlider = () => {
   const [floorHeight, setFloorHeight] = useState<number | number[]>(0);
-  const [floorNumber, setFloorNumber] = useState<number>(1);
+  const [floorNumber, setFloorNumber] = useState<number>(0);
   const [currentLatlng, setCurrentLatlng] = useState<ILatLng>({
     lat: 76.8188,
     lng: 30.7421,
@@ -55,7 +55,6 @@ const AppSlider = () => {
           getElevation: (f) => floorHeight as number,
           lineWidthMinPixels: 20,
           getLineColor: [0, 0, 0],
-          // lineWidthUnit : ,
           elevationScale: i * (floorHeight as number),
           positionFormat: "XY",
           lineJointRounded: true,
@@ -68,10 +67,7 @@ const AppSlider = () => {
       }
     }
     setVolume((floorHeight as number) * buildingFloorArea);
-    setBuildingHeight(
-      (floorNumber > 0 ? floorNumber - 1 : floorNumber) *
-        (floorHeight as number)
-    );
+    setBuildingHeight(floorNumber * (floorHeight as number));
     setBuildingArea(floorNumber * buildingFloorArea);
     setLayers(floorLayers);
   };
@@ -100,9 +96,7 @@ const AppSlider = () => {
     let newbuildingGeoJSON = findNewBuildingArea(originalGeoJSON, v);
     var polygon = turf.polygon([newbuildingGeoJSON!]);
     const polygonArea = turf.area(polygon);
-    console.log(polygonArea, "area");
     setbuildingFloorArea(polygonArea);
-
     setGeoJSON({ ...geoJSON, coordinates: [[newbuildingGeoJSON]] });
   };
 
@@ -140,7 +134,6 @@ const AppSlider = () => {
                       const result = target?.result;
                       let parsedJson = JSON.parse(result as any);
                       const coords = parsedJson.coordinates[0]?.[0];
-                      console.log(coords, "coords");
                       setCurrentLatlng({
                         lat: coords?.[0]?.[0],
                         lng: coords?.[1]?.[1],
@@ -152,6 +145,7 @@ const AppSlider = () => {
                       var polygon = turf.polygon([coordinates[0]]);
                       const landCoverage = turf.area(polygon);
                       setLandArea(landCoverage);
+                      setbuildingFloorArea(landCoverage);
                     };
                   }
                 }
@@ -159,49 +153,73 @@ const AppSlider = () => {
             />
           </Button>
           <div style={{ marginTop: 30 }}>
-            <label>Lot Coverage &nbsp; &nbsp; {coverage}</label>
+            <div>
+              <label>Lot Coverage</label> <b>100</b>
+            </div>
             <Slider
               size="medium"
-              defaultValue={coverage}
               value={coverage}
               aria-label="Small"
-              min={1}
+              valueLabelDisplay="on"
+              min={0}
               max={100}
-              valueLabelDisplay="off"
               onChange={(event, value) => hanldeIncreaseCoverage(event, value)}
-              marks={marks}
+              // marks={marks}
             />
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <label>0</label> <b>100</b>
+            </div>
           </div>
           <div style={{ marginTop: 30 }}>
-            <label>Floor height &nbsp; &nbsp; {floorHeight}</label>
+            <label>Floor height</label>
             <Slider
               size="medium"
-              defaultValue={floorHeight}
               value={floorHeight}
+              valueLabelDisplay="on"
               aria-label="Small"
               min={0}
               max={5}
-              valueLabelDisplay="off"
               onChange={(event, value) => setFloorHeight(value)}
-              marks={marks}
+              // marks={marks}
             />
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <label>0</label> <b>5</b>
+            </div>
           </div>
           <div style={{ marginTop: 30 }}>
-            <label>
-              Floor number &nbsp; &nbsp;
-              {floorNumber > 0 ? floorNumber - 1 : floorNumber}
-            </label>
+            <label>Floor number</label>
             <Slider
               size="medium"
               defaultValue={floorNumber}
               value={floorNumber}
+              valueLabelDisplay="on"
               aria-label="Small"
               min={0}
-              max={100}
-              valueLabelDisplay="off"
+              max={15}
               onChange={(event, value) => setFloorNumber(value as number)}
-              marks={marks}
+              // marks={marks}
             />
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <label>0</label> <b>15</b>
+            </div>
           </div>
         </div>
       </Grid>
@@ -224,8 +242,7 @@ const AppSlider = () => {
           <li className="list">Land Area {`${landArea}`}(m2)</li>
           <li className="list"> Building Area {`${buildingArea}`}(m2)</li>
           <li className="list">
-            {" "}
-            Building Floor Area {`${buildingFloorArea && buildingFloorArea}`}
+            Building Floor Area {`${buildingFloorArea}`}
             (m2)
           </li>
           <li className="list"> Volume {`${volume}`}(m3)</li>

@@ -1,6 +1,5 @@
 import * as turf from "@turf/turf";
 export const findNewBuildingArea = (inputJSON: any, sliderValue: number) => {
-  console.log(sliderValue, "sliderVale");
   try {
     if (inputJSON) {
       const newPolygon = turf.polygon(inputJSON?.coordinates?.[0], {
@@ -19,7 +18,6 @@ export const findNewBuildingArea = (inputJSON: any, sliderValue: number) => {
             const to = turf.point([lat1, lon1]);
             const distance = turf.distance(from, to, { units: "meters" });
             const brng = turf.bearing(from, to);
-            // var distance = R * c;
             const d = (distance * sliderValue) / 100;
             var destination = turf.destination(from, d, brng, {
               units: "meters",
